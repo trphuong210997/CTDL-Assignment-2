@@ -93,6 +93,9 @@ void tc5()
 int main(int argc, const char *argv[])
 {
     tc1();
-
+    // tc2();
+    // tc3();
+    // tc4();
+    // tc5();
     return 0;
 }
