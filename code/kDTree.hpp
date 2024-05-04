@@ -41,18 +41,18 @@ public:
         delete root;
     }
 
-    const kDTree &operator=(const kDTree &other) {
-        this->k = other.k;
-        this->count = other.count;
-        this->root = copyData(other.root);
-        return *this;
-    }
-
     kDTreeNode *copyData(kDTreeNode *node) {
         if (node == nullptr) 
             return nullptr;
         
         return new kDTreeNode(node->data, copyData(node->left), copyData(node->right));
+    }
+
+    const kDTree &operator=(const kDTree &other) {
+        this->k = other.k;
+        this->count = other.count;
+        this->root = copyData(other.root);
+        return *this;
     }
 
     kDTree(const kDTree &other) {
@@ -138,31 +138,121 @@ public:
 
         kDTreeNode *current = root;
         kDTreeNode *parent = nullptr;
-        int depth = 0;
+        int treeLevel = 0;
 
         while (current != nullptr) {
             parent = current;
-            if (point[depth % k] < current->data[depth % k]) {
+
+            if (point[treeLevel % k] < current->data[treeLevel % k])
                 current = current->left;
-            } else {
+            else
                 current = current->right;
-            }
-            depth++;
+
+            treeLevel++;
         }
 
-        if (point[depth % k] < parent->data[depth % k]) {
+        if (point[treeLevel % k] < parent->data[treeLevel % k])
             parent->left = new kDTreeNode(point);
-        } else {
+        else 
             parent->right = new kDTreeNode(point);
-        }
+        
         count++;
     }
 
-    void remove(const vector<int> &point);
+    bool searchHelper(kDTreeNode *node, const vector<int> &point, int treeLevel) {
+        if (node == nullptr)
+            return false;
+        
+        if (node->data == point)
+            return true;
 
-    bool search(const vector<int> &point);
+        if (point[treeLevel % k] < node->data[treeLevel % k])
+            return searchHelper(node->left, point, treeLevel + 1);
+        else
+            return searchHelper(node->right, point, treeLevel + 1);
+    }
 
-    void buildTree(const vector<vector<int>> &pointList);
+    bool search(const vector<int> &point) {
+        return searchHelper(root, point, 0);
+    }
+
+    kDTreeNode *findMin(kDTreeNode *node) {
+        if (node == nullptr)
+            return nullptr;
+        
+        while (node->left != nullptr)
+            node = node->left;
+        
+        return node;
+    }
+
+    void removeHelper(kDTreeNode *node, const vector<int> &point, int treeLevel) {
+        if (node == nullptr)
+            return;
+        
+        if (search(point) == false)
+            return;
+
+        if (node->data == point) {
+            if (node->left == nullptr && node->right == nullptr) {
+                delete node;
+                count--;
+                return;
+            }
+
+            if (node->left == nullptr) {
+                kDTreeNode *temp = node;
+                node = node->right;
+                delete temp;
+                count--;
+                return;
+            }
+
+            if (node->right == nullptr) {
+                kDTreeNode *temp = node;
+                node = node->left;
+                delete temp;
+                count--;
+                return;
+            }
+
+            kDTreeNode *minNode = findMin(node->right);
+            node->data = minNode->data;
+            removeHelper(node->right, minNode->data, treeLevel + 1);
+        }
+
+        if (point[treeLevel % k] < node->data[treeLevel % k])
+            removeHelper(node->left, point, treeLevel + 1);
+        else
+            removeHelper(node->right, point, treeLevel + 1);
+    }
+
+    void remove(const vector<int> &point) {
+        return removeHelper(root, point, 0);
+    }
+    
+
+    kDTreeNode *buildTreeHelper(const vector<vector<int>> &pointList, int treeLevel) {
+        if (pointList.empty())
+            return nullptr;
+        
+        int axis = treeLevel % k;
+        int median = pointList.size() / 2;
+
+        sort(pointList.begin(), pointList.end(), [axis](const vector<int> &a, const vector<int> &b) {
+            return a[axis] < b[axis];
+        });
+
+        kDTreeNode *node = new kDTreeNode(pointList[median]);
+        node->left = buildTreeHelper(vector<vector<int>>(pointList.begin(), pointList.begin() + median), treeLevel + 1);
+        node->right = buildTreeHelper(vector<vector<int>>(pointList.begin() + median + 1, pointList.end()), treeLevel + 1);
+
+        return node;
+    }
+
+    void buildTree(const vector<vector<int>> &pointList) {
+        this->root = buildTreeHelper(pointList, 0);
+    }
 
     void nearestNeighbour(const vector<int> &target, kDTreeNode *best);
 
